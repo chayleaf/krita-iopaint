@@ -1,4 +1,5 @@
 import json
+import requests
 from PyQt5.QtCore import QBuffer, QByteArray, QUrl
 from PyQt5.QtGui import QImage
 from PyQt5.QtNetwork import QNetworkRequest, QNetworkReply, QNetworkAccessManager
@@ -9,7 +10,7 @@ from krita import *
 URL = "http://127.0.0.1:8080/api/v1/inpaint"
 
 # context pixels to include around selection
-PAD = 128
+PAD = 256
 
 
 def clamp(doc, coords):
@@ -96,34 +97,17 @@ class KritaIopaint(Extension):
 
         mask_b64 = img2b64(mask)
         img_b64 = img2b64(img)
-        req = QNetworkRequest(QUrl(URL))
-        data = QByteArray(
-            json.dumps(
-                {
-                    "image": img_b64,
-                    "mask": mask_b64,
-                }
-            ).encode("utf-8")
-        )
-        req.setHeader(
-            QNetworkRequest.KnownHeaders.ContentTypeHeader, "application/json"
-        )
-        req.setHeader(QNetworkRequest.KnownHeaders.ContentLengthHeader, data.size())
-        res = self.net.post(req, data)
+        res = requests.post(URL, json={"image": img_b64, "mask": mask_b64})
+        res.raise_for_status()
 
         parent = node
 
-        def finished() -> None:
-            node = parent.duplicate()
-            doc.rootNode().addChildNode(node, parent)
-            data = res.readAll()
-            img = QImage.fromData(data, "png").convertToFormat(
-                QImage.Format.Format_ARGB32
-            )
-            bits = img.constBits()
-            data = QByteArray(bits.asstring(img.byteCount()))
-            img = apply_mask(img, mask)
-            node.setPixelData(data, *pcoords)
-            node.mergeDown()
-
-        res.finished.connect(finished)
+        node = parent.duplicate()
+        data = res.content
+        img = QImage.fromData(data, "png").convertToFormat(QImage.Format.Format_ARGB32)
+        bits = img.constBits()
+        data = QByteArray(bits.asstring(img.byteCount()))
+        img = apply_mask(img, mask)
+        node.setPixelData(data, *pcoords)
+        doc.rootNode().addChildNode(node, parent)
+        node.mergeDown()
