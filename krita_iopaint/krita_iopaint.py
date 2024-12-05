@@ -109,5 +109,5 @@ class KritaIopaint(Extension):
         data = QByteArray(bits.asstring(img.byteCount()))
         img = apply_mask(img, mask)
         node.setPixelData(data, *pcoords)
-        doc.rootNode().addChildNode(node, parent)
+        parent.parentNode().addChildNode(node, parent)
         node.mergeDown()
