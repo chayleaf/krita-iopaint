@@ -68,7 +68,15 @@ class KritaIopaint(Extension):
 
     def run(self) -> None:
         doc = self.inst.activeDocument()
-        sel = doc.selection().duplicate()
+        sel = doc.selection()
+        if sel is None:
+            if (window := self.inst.activeWindow()) is not None:
+                if (view := window.activeView()) is not None:
+                    icon = self.inst.icon("tool_outline_selection")
+                    view.showFloatingMessage("IOPaint requires a selection", icon, 2000, 1)
+            return
+
+        sel = sel.duplicate()
         node = doc.activeNode()
         coords = [
             sel.x() - node.position().x(),
