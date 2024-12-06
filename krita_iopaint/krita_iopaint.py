@@ -7,8 +7,8 @@ from PyQt5.QtNetwork import QNetworkRequest, QNetworkReply, QNetworkAccessManage
 from krita import *
 
 # IOPaint API URL
-PORT = 8080
-URL = f"http://127.0.0.1:{PORT}/api/v1/inpaint"
+AUTHORITY = "127.0.0.1:8080"
+URL = f"http://{AUTHORITY}/api/v1/inpaint"
 
 # context pixels to include around selection
 PAD = 256
@@ -111,7 +111,7 @@ class KritaIopaint(Extension):
             res = requests.post(URL, json={"image": img_b64, "mask": mask_b64})
         except requests.ConnectionError:
             if view is not None:
-                msg = f"Could not connect to IOPaint server on port {PORT} – is it running?"
+                msg = f"Could not connect to IOPaint server at {AUTHORITY} – is it running?"
                 icon = self.inst.icon("dialog-warning")
                 view.showFloatingMessage(msg, icon, 2000, 1)
             return
