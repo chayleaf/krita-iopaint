@@ -7,7 +7,8 @@ from PyQt5.QtNetwork import QNetworkRequest, QNetworkReply, QNetworkAccessManage
 from krita import *
 
 # IOPaint API URL
-URL = "http://127.0.0.1:8080/api/v1/inpaint"
+AUTHORITY = "127.0.0.1:8080"
+URL = f"http://{AUTHORITY}/api/v1/inpaint"
 
 # context pixels to include around selection
 PAD = 256
@@ -68,7 +69,16 @@ class KritaIopaint(Extension):
 
     def run(self) -> None:
         doc = self.inst.activeDocument()
-        sel = doc.selection().duplicate()
+        sel = doc.selection()
+        window = self.inst.activeWindow()
+        view = None if window is None else window.activeView()
+        if sel is None:
+            if view is not None:
+                icon = self.inst.icon("tool_outline_selection")
+                view.showFloatingMessage("IOPaint requires a selection", icon, 2000, 1)
+            return
+
+        sel = sel.duplicate()
         node = doc.activeNode()
         coords = [
             sel.x() - node.position().x(),
@@ -97,7 +107,15 @@ class KritaIopaint(Extension):
 
         mask_b64 = img2b64(mask)
         img_b64 = img2b64(img)
-        res = requests.post(URL, json={"image": img_b64, "mask": mask_b64})
+        try:
+            res = requests.post(URL, json={"image": img_b64, "mask": mask_b64})
+        except requests.ConnectionError:
+            if view is not None:
+                msg = f"Could not connect to IOPaint server at {AUTHORITY} – is it running?"
+                icon = self.inst.icon("dialog-warning")
+                view.showFloatingMessage(msg, icon, 2000, 1)
+            return
+
         res.raise_for_status()
 
         parent = node
